@@ -1,6 +1,11 @@
 import pickle
 import pandas as pd
 import gradio as gr
+import zipfile
+
+with zipfile.ZipFile("cosine_sim.zip", "r") as zip_ref:
+    zip_ref.extractall(".")
+
 
 # load similarity matrix
 with open("cosine_sim.pkl", "rb") as f:
