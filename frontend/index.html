@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CineMatch — Movie Recommendation System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080c12;
+    --surface: #0f1520;
+    --card: #131b27;
+    --card-hover: #1a2436;
+    --border: rgba(255,255,255,0.06);
+    --accent: #e8b04b;
+    --accent2: #c0392b;
+    --text: #e8e4dc;
+    --muted: #7a8499;
+    --red: #e74c3c;
+    --green: #2ecc71;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Film grain overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 20px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(8,12,18,0.95), transparent);
+    backdrop-filter: blur(4px);
+  }
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .nav-logo span { color: var(--text); }
+  .nav-links { display: flex; gap: 8px; }
+  .nav-btn {
+    background: none; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 16px; border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover, .nav-btn.active { color: var(--text); background: rgba(255,255,255,0.05); }
+  .nav-btn.active { color: var(--accent); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background: 
+      radial-gradient(ellipse 80% 60% at 50% 40%, rgba(232,176,75,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 80% 20%, rgba(192,57,43,0.08) 0%, transparent 60%);
+  }
+  .hero-strip {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  }
+  .hero-eyebrow {
+    font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .hero-eyebrow::before, .hero-eyebrow::after {
+    content: ''; flex: 1; max-width: 60px; height: 1px;
+    background: var(--accent); opacity: 0.4;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 12vw, 140px);
+    line-height: 0.9;
+    letter-spacing: 4px;
+    margin-bottom: 24px;
+  }
+  .hero-title .gold { color: var(--accent); }
+  .hero-title .red { color: var(--accent2); }
+  .hero-subtitle {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: clamp(16px, 2.5vw, 22px);
+    color: var(--muted);
+    max-width: 540px;
+    line-height: 1.6;
+    margin-bottom: 60px;
+  }
+  .hero-actions {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #08090c;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500; font-size: 13px;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 16px 36px; border: none; border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(255,255,255,0.15);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+  .btn-primary:hover::after { transform: translateX(0); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(232,176,75,0.3); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400; font-size: 13px;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 15px 36px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 2px; cursor: pointer;
+    transition: all 0.25s;
+  }
+  .btn-secondary:hover {
+    border-color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.04);
+    transform: translateY(-2px);
+  }
+
+  .hero-stats {
+    margin-top: 80px;
+    display: flex; gap: 60px; flex-wrap: wrap; justify-content: center;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px; color: var(--accent); line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); margin-top: 4px;
+  }
+
+  /* PAGE WRAPPER */
+  .page {
+    min-height: 100vh;
+    padding: 100px 48px 80px;
+    max-width: 1400px;
+    margin: 0 auto;
+    animation: fadeUp 0.4s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .page-header { margin-bottom: 48px; }
+  .page-eyebrow {
+    font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 12px;
+  }
+  .page-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 6vw, 72px);
+    letter-spacing: 2px; line-height: 1;
+  }
+  .page-desc {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    color: var(--muted); margin-top: 12px;
+    font-size: 16px; line-height: 1.6;
+    max-width: 500px;
+  }
+
+  /* SEARCH BAR */
+  .search-container {
+    display: flex; gap: 0;
+    max-width: 640px;
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    padding: 16px 24px;
+    outline: none;
+    border-radius: 2px 0 0 2px;
+    transition: border-color 0.2s;
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus { border-color: rgba(232,176,75,0.4); }
+  .search-btn {
+    background: var(--accent);
+    color: #08090c;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500; font-size: 13px;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 16px 28px;
+    border: none; border-radius: 0 2px 2px 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { background: #f0c060; }
+  .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* HISTORY PILLS */
+  .history-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 32px; align-items: center;
+  }
+  .history-label {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .history-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px; padding: 5px 14px;
+    border-radius: 100px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .history-pill:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* MOVIE GRID */
+  .movies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  /* MOVIE CARD */
+  .movie-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    animation: fadeUp 0.4s ease both;
+  }
+  .movie-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    border-color: rgba(232,176,75,0.3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(232,176,75,0.1);
+  }
+  .movie-poster {
+    width: 100%; aspect-ratio: 2/3;
+    background: var(--surface);
+    position: relative; overflow: hidden;
+  }
+  .movie-poster img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 0.4s;
+  }
+  .movie-card:hover .movie-poster img { transform: scale(1.05); }
+  .poster-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; color: var(--muted);
+  }
+  .poster-placeholder .film-icon {
+    font-size: 36px; opacity: 0.3;
+  }
+  .poster-placeholder .movie-initial {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px; color: var(--accent); opacity: 0.4;
+    line-height: 1;
+  }
+  .poster-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(8,12,18,0.95) 0%, transparent 60%);
+    opacity: 0; transition: opacity 0.3s;
+    display: flex; align-items: flex-end; padding: 16px;
+  }
+  .movie-card:hover .poster-overlay { opacity: 1; }
+  .overlay-play {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #08090c;
+    transform: scale(0.8); transition: transform 0.2s;
+  }
+  .movie-card:hover .overlay-play { transform: scale(1); }
+  .card-rank {
+    position: absolute; top: 12px; left: 12px;
+    background: var(--accent);
+    color: #08090c;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; line-height: 1;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+  }
+  .movie-info {
+    padding: 14px 16px 16px;
+  }
+  .movie-title {
+    font-size: 14px; font-weight: 500;
+    line-height: 1.3; margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .movie-meta {
+    display: flex; gap: 8px; align-items: center;
+    flex-wrap: wrap;
+  }
+  .movie-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; color: var(--accent);
+    letter-spacing: 1px;
+  }
+  .movie-genre {
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); padding: 2px 8px;
+    border: 1px solid var(--border); border-radius: 2px;
+  }
+
+  /* SKELETON */
+  .skeleton-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .skeleton-poster { width: 100%; aspect-ratio: 2/3; background: var(--surface); }
+  .skeleton-body { padding: 14px 16px 16px; }
+  .skeleton-line {
+    height: 12px; background: var(--surface);
+    border-radius: 2px; margin-bottom: 8px;
+  }
+  .skeleton-line.short { width: 60%; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex; align-items: baseline; gap: 16px;
+    margin-bottom: 28px; margin-top: 52px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 2px;
+  }
+  .section-count {
+    font-size: 13px; color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .section-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* QUIZ PAGE */
+  .quiz-container {
+    max-width: 700px;
+  }
+  .quiz-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px; padding: 40px;
+    margin-bottom: 32px;
+  }
+  .quiz-step {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+  }
+  .quiz-question {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px; line-height: 1.4;
+    margin-bottom: 24px;
+  }
+  .quiz-input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; padding: 14px 18px;
+    outline: none; border-radius: 2px;
+    transition: border-color 0.2s;
+    margin-bottom: 16px;
+  }
+  .quiz-input:focus { border-color: rgba(232,176,75,0.4); }
+  .quiz-select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; padding: 14px 18px;
+    outline: none; border-radius: 2px;
+    cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8499' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
+  }
+  .quiz-select option { background: var(--card); }
+  .mood-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-bottom: 16px;
+  }
+  .mood-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; padding: 12px 8px;
+    border-radius: 2px; cursor: pointer;
+    text-align: center; transition: all 0.2s;
+  }
+  .mood-btn:hover { border-color: var(--accent); color: var(--text); }
+  .mood-btn.selected {
+    border-color: var(--accent);
+    background: rgba(232,176,75,0.08);
+    color: var(--accent);
+  }
+  .mood-emoji { display: block; font-size: 22px; margin-bottom: 4px; }
+
+  /* TOAST */
+  .toast-container {
+    position: fixed; bottom: 32px; right: 32px;
+    display: flex; flex-direction: column; gap: 10px;
+    z-index: 1000;
+  }
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    padding: 14px 20px;
+    border-radius: 2px;
+    font-size: 14px;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease both;
+  }
+  .toast.success { border-left-color: var(--green); }
+  .toast-title { font-weight: 500; margin-bottom: 2px; }
+  .toast-msg { color: var(--muted); font-size: 13px; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* SPINNER */
+  .spinner {
+    width: 40px; height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .spinner-wrap {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; padding: 60px;
+    color: var(--muted); font-size: 13px;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 80px 0; text-align: center;
+    color: var(--muted);
+  }
+  .empty-state .big-icon { font-size: 64px; opacity: 0.2; margin-bottom: 20px; }
+  .empty-state h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 2px;
+    color: var(--text); margin-bottom: 8px;
+  }
+  .empty-state p { font-size: 14px; line-height: 1.6; max-width: 320px; margin: 0 auto; }
+
+  /* TRENDING SECTION */
+  .trending-scroll {
+    display: flex; gap: 16px;
+    overflow-x: auto; padding-bottom: 12px;
+    scrollbar-width: none;
+  }
+  .trending-scroll::-webkit-scrollbar { display: none; }
+  .trending-card {
+    flex: 0 0 160px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+  .trending-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(232,176,75,0.3);
+  }
+  .trending-poster {
+    width: 100%; aspect-ratio: 2/3;
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .trending-info { padding: 10px 12px; }
+  .trending-title {
+    font-size: 12px; font-weight: 500;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    nav { padding: 16px 20px; }
+    .nav-links { gap: 4px; }
+    .nav-btn { padding: 6px 10px; font-size: 11px; }
+    .page { padding: 90px 20px 60px; }
+    .movies-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+    .hero-stats { gap: 32px; }
+    .mood-grid { grid-template-columns: repeat(2, 1fr); }
+    .search-container { max-width: 100%; }
+    .toast-container { right: 16px; bottom: 16px; left: 16px; }
+    .toast { max-width: 100%; }
+    .quiz-card { padding: 24px; }
+  }
+  @media (max-width: 480px) {
+    .movies-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero-actions { flex-direction: column; align-items: center; }
+    .btn-primary, .btn-secondary { width: 100%; max-width: 280px; }
+  }
+
+  /* API CONFIG BADGE */
+  .api-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 100px;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 28px;
+  }
+  .api-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .api-dot.offline { background: var(--red); animation: blink 1s ease infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 52px 0;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// Config
+const API_URL = 'http://localhost:8000';
+
+// TMDB poster fallback (free to use CDN placeholder images with movie colors)
+const getPosterColor = (title) => {
+  const colors = ['#1a2436','#1e1a2e','#1a2e1e','#2e1a1a','#1e2a1a','#2a1e2e'];
+  const hash = title.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  return colors[hash % colors.length];
+};
+
+// Toast system
+const ToastContext = React.createContext(null);
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const add = useCallback((msg, type='error', title='') => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type, title }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+  }, []);
+  return (
+    <ToastContext.Provider value={add}>
+      {children}
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.type}`}>
+            {t.title && <div className="toast-title">{t.title}</div>}
+            <div className="toast-msg">{t.msg}</div>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+const useToast = () => React.useContext(ToastContext);
+
+// Movie Card
+function MovieCard({ movie, index }) {
+  const [imgError, setImgError] = useState(false);
+  const bgColor = getPosterColor(movie.title || '');
+  return (
+    <div className="movie-card" style={{ animationDelay: `${index * 0.05}s` }}>
+      <div className="movie-poster">
+        {movie.poster && !imgError ? (
+          <img src={movie.poster} alt={movie.title} onError={() => setImgError(true)} />
+        ) : (
+          <div className="poster-placeholder" style={{ background: bgColor }}>
+            <div className="movie-initial">{(movie.title || '?')[0]}</div>
+            <span style={{fontSize:'11px',letterSpacing:'2px',textTransform:'uppercase',opacity:0.3}}>No Poster</span>
+          </div>
+        )}
+        <div className="poster-overlay">
+          <div className="overlay-play">▶</div>
+        </div>
+        <div className="card-rank">{index + 1}</div>
+      </div>
+      <div className="movie-info">
+        <div className="movie-title">{movie.title}</div>
+        <div className="movie-meta">
+          {movie.score && <span className="movie-score">{(movie.score * 100).toFixed(0)}% match</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="skeleton-card">
+      <div className="skeleton-poster" />
+      <div className="skeleton-body">
+        <div className="skeleton-line" />
+        <div className="skeleton-line short" />
+      </div>
+    </div>
+  );
+}
+
+// Trending placeholder movies
+const TRENDING_MOVIES = [
+  'Inception','The Dark Knight','Interstellar','Pulp Fiction',
+  'The Godfather','Fight Club','The Matrix','Goodfellas','Parasite','Joker'
+];
+
+// HOME PAGE
+function HomePage({ setPage }) {
+  return (
+    <div className="hero">
+      <div className="hero-bg" />
+      <div className="hero-strip" />
+      <div className="hero-eyebrow">Powered by AI · Cosine Similarity</div>
+      <h1 className="hero-title">
+        <span className="gold">CINE</span><br/>
+        <span>MATCH</span>
+      </h1>
+      <p className="hero-subtitle">
+        Discover your next obsession. Enter a film, get ten perfect recommendations — curated by machine intelligence.
+      </p>
+      <div className="hero-actions">
+        <button className="btn-primary" onClick={() => setPage('recommend')}>
+          ▶ Get Recommendations
+        </button>
+        <button className="btn-secondary" onClick={() => setPage('quiz')}>
+          ◈ Take the Movie Quiz
+        </button>
+      </div>
+      <div className="hero-stats">
+        <div className="stat"><div className="stat-num">10K+</div><div className="stat-label">Movies</div></div>
+        <div className="stat"><div className="stat-num">AI</div><div className="stat-label">Powered</div></div>
+        <div className="stat"><div className="stat-num">10</div><div className="stat-label">Results</div></div>
+      </div>
+    </div>
+  );
+}
+
+// RECOMMEND PAGE
+function RecommendPage() {
+  const toast = useToast();
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [history, setHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cinSearch') || '[]'); } catch { return []; }
+  });
+  const inputRef = useRef(null);
+
+  const search = async (title) => {
+    if (!title.trim()) { toast('Please enter a movie title.', 'error', 'Missing Input'); return; }
+    setLoading(true); setResults(null);
+    try {
+      const res = await fetch(`${API_URL}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim() })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Server error ${res.status}`);
+      }
+      const data = await res.json();
+      const movies = (data.recommendations || []).map((t, i) => ({ title: t, score: null }));
+      setResults({ movie: data.requested_movie, recommendations: movies });
+      const newHistory = [title, ...history.filter(h => h !== title)].slice(0, 5);
+      setHistory(newHistory);
+      localStorage.setItem('cinSearch', JSON.stringify(newHistory));
+      toast(`Found ${movies.length} recommendations for "${title}"`, 'success', 'Success');
+    } catch (e) {
+      toast(e.message || 'Could not connect to API.', 'error', 'Request Failed');
+    }
+    setLoading(false);
+  };
+
+  const handleKey = (e) => { if (e.key === 'Enter') search(query); };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">AI Recommendations</div>
+        <h2 className="page-title">Find Your<br/>Next Film</h2>
+        <p className="page-desc">Enter any movie title and discover ten films with similar DNA.</p>
+      </div>
+
+      <div className="api-badge">
+        <div className="api-dot" />
+        Connected to {API_URL}
+      </div>
+
+      <div className="search-container">
+        <input
+          ref={inputRef}
+          className="search-input"
+          placeholder="e.g. Inception, The Godfather, Parasite..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={handleKey}
+        />
+        <button className="search-btn" onClick={() => search(query)} disabled={loading}>
+          {loading ? '...' : 'Search'}
+        </button>
+      </div>
+
+      {history.length > 0 && (
+        <div className="history-bar">
+          <span className="history-label">Recent:</span>
+          {history.map(h => (
+            <button key={h} className="history-pill" onClick={() => { setQuery(h); search(h); }}>{h}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Trending */}
+      {!results && !loading && (
+        <>
+          <div className="section-header">
+            <span className="section-title">Trending</span>
+            <span className="section-count">Popular searches</span>
+            <div className="section-line" />
+          </div>
+          <div className="trending-scroll">
+            {TRENDING_MOVIES.map(t => (
+              <div key={t} className="trending-card" onClick={() => { setQuery(t); search(t); }}>
+                <div className="trending-poster" style={{ background: getPosterColor(t) }}>
+                  <span style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'40px', color:'rgba(232,176,75,0.3)' }}>
+                    {t[0]}
+                  </span>
+                </div>
+                <div className="trending-info">
+                  <div className="trending-title">{t}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {loading && (
+        <div className="spinner-wrap">
+          <div className="spinner" />
+          Analyzing film DNA...
+        </div>
+      )}
+
+      {results && !loading && (
+        <>
+          <div className="section-header">
+            <span className="section-title">Because you like</span>
+            <span className="section-count" style={{ color:'var(--accent)' }}>"{results.movie}"</span>
+            <div className="section-line" />
+          </div>
+          <div className="movies-grid">
+            {results.recommendations.map((m, i) => (
+              <MovieCard key={m.title + i} movie={m} index={i} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// QUIZ PAGE
+const MOODS = [
+  { emoji: '😂', label: 'Comedy' },
+  { emoji: '😱', label: 'Thriller' },
+  { emoji: '❤️', label: 'Romance' },
+  { emoji: '🚀', label: 'Sci-Fi' },
+  { emoji: '👻', label: 'Horror' },
+  { emoji: '⚔️', label: 'Action' },
+];
+
+function QuizPage() {
+  const toast = useToast();
+  const [fav, setFav] = useState('');
+  const [mood, setMood] = useState('');
+  const [era, setEra] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+
+  const generate = async () => {
+    if (!fav.trim()) { toast('Please enter a favourite movie.', 'error', 'Missing Input'); return; }
+    setLoading(true); setResults(null);
+    // Try quiz endpoint first, fallback to /predict
+    const payload = { title: fav.trim(), genre: mood, era };
+    let data;
+    try {
+      const res = await fetch(`${API_URL}/quiz-recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) { data = await res.json(); }
+    } catch {}
+    if (!data) {
+      try {
+        const res = await fetch(`${API_URL}/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: fav.trim() })
+        });
+        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Server error'); }
+        data = await res.json();
+      } catch (e) {
+        toast(e.message || 'Could not connect.', 'error', 'Request Failed');
+        setLoading(false); return;
+      }
+    }
+    const movies = (data.recommendations || []).map(t => ({ title: t }));
+    setResults({ movie: data.requested_movie, recommendations: movies });
+    setLoading(false);
+    toast(`Your personalised picks are ready!`, 'success', 'Quiz Complete');
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-eyebrow">Personalised Picks</div>
+        <h2 className="page-title">Movie<br/>Quiz</h2>
+        <p className="page-desc">Answer three questions and let the algorithm build your perfect watchlist.</p>
+      </div>
+
+      <div className="quiz-container">
+        <div className="quiz-card">
+          <div className="quiz-step">Step 01</div>
+          <div className="quiz-question">What's a film you absolutely love?</div>
+          <input
+            className="quiz-input"
+            placeholder="e.g. The Dark Knight, Spirited Away..."
+            value={fav}
+            onChange={e => setFav(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && generate()}
+          />
+        </div>
+
+        <div className="quiz-card">
+          <div className="quiz-step">Step 02</div>
+          <div className="quiz-question">What mood are you in tonight?</div>
+          <div className="mood-grid">
+            {MOODS.map(m => (
+              <button
+                key={m.label}
+                className={`mood-btn ${mood === m.label ? 'selected' : ''}`}
+                onClick={() => setMood(mood === m.label ? '' : m.label)}
+              >
+                <span className="mood-emoji">{m.emoji}</span>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="quiz-card">
+          <div className="quiz-step">Step 03 · Optional</div>
+          <div className="quiz-question">Any era preference?</div>
+          <select
+            className="quiz-select"
+            value={era}
+            onChange={e => setEra(e.target.value)}
+          >
+            <option value="">No preference</option>
+            <option value="classic">Classic (pre-1980)</option>
+            <option value="80s90s">80s & 90s</option>
+            <option value="2000s">2000s</option>
+            <option value="modern">Modern (2010+)</option>
+            <option value="recent">Recent (2020+)</option>
+          </select>
+        </div>
+
+        <button className="btn-primary" style={{ width:'100%', padding:'18px' }} onClick={generate} disabled={loading}>
+          {loading ? 'Generating...' : '◈ Generate My Recommendations'}
+        </button>
+      </div>
+
+      {loading && (
+        <div className="spinner-wrap">
+          <div className="spinner" />
+          Curating your watchlist...
+        </div>
+      )}
+
+      {results && !loading && (
+        <>
+          <div className="divider" />
+          <div className="section-header">
+            <span className="section-title">Your Picks</span>
+            <span className="section-count">Based on "{results.movie}"</span>
+            <div className="section-line" />
+          </div>
+          <div className="movies-grid">
+            {results.recommendations.map((m, i) => (
+              <MovieCard key={m.title + i} movie={m} index={i} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ROOT APP
+function App() {
+  const [page, setPage] = useState('home');
+  return (
+    <ToastProvider>
+      <nav>
+        <div className="nav-logo" onClick={() => setPage('home')}>
+          Cine<span>Match</span>
+        </div>
+        <div className="nav-links">
+          <button className={`nav-btn ${page==='home'?'active':''}`} onClick={() => setPage('home')}>Home</button>
+          <button className={`nav-btn ${page==='recommend'?'active':''}`} onClick={() => setPage('recommend')}>Recommend</button>
+          <button className={`nav-btn ${page==='quiz'?'active':''}`} onClick={() => setPage('quiz')}>Quiz</button>
+        </div>
+      </nav>
+      {page === 'home' && <HomePage setPage={setPage} />}
+      {page === 'recommend' && <RecommendPage />}
+      {page === 'quiz' && <QuizPage />}
+    </ToastProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
