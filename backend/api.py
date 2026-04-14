@@ -156,14 +156,16 @@ def load_model() -> None:
     logger.info("✓ Model loaded successfully — API is ready for predictions.")
 
 
-# Run model loading once at import time (uvicorn startup)
-load_model()
-
-
 # ---------------------------------------------------------------------------
 # FastAPI App
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Movie Recommender API")
+
+
+@app.on_event("startup")
+def startup_event():
+    """Load model data when the FastAPI application starts."""
+    load_model()
 
 # CORS — allow the frontend (served from file:// or a different origin) to call the API
 app.add_middleware(
